@@ -1,14 +1,42 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import LineChartComponent from "../components/LineChartComponent";
+
+type PricePoint = {
+  time: string;
+  price: number;
+};
 
 function IndexPage() {
   const [price, setPrice] = useState<number | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
 
-  useEffect(() => {
+  const fetchPriceData = () => {
     fetch("http://localhost:5000/api/price")
       .then((response) => response.json())
-      .then((data) => JSON.parse(data))
-      .then((data) => setPrice(data["Bitcoin"]["usd"]));
+      .then((data) => {
+        const parsed = JSON.parse(data);
+        const bars = parsed?.bars?.["BTC/USD"] || [];
+
+        if (bars.length > 0) {
+          const formatted = bars.map((bar: any) => ({
+            time: bar.t,
+            price: bar.c,
+          }));
+          setPriceHistory(formatted);
+          setPrice(formatted[formatted.length - 1].price);
+        }
+      });
+  };
+
+  useEffect(() => {
+    fetchPriceData(); // initial fetch
+
+    const interval = setInterval(() => {
+      fetchPriceData(); // repeat every 60 seconds
+    }, 60 * 1000);
+
+    return () => clearInterval(interval); // cleanup on unmount
   }, []);
 
   return (
@@ -29,12 +57,17 @@ function IndexPage() {
         </p>
       </div>
 
-      {/* Chart Placeholder */}
+      {/* Price Chart */}
       <div className="mt-12">
         <h3 className="text-2xl text-gray-300 mb-4">Last 60 Minutes</h3>
-        <div className="w-full h-80 bg-gray-800 rounded-xl flex items-center justify-center text-gray-500">
-          {/* Replace this div with your line chart */}
-          <span>Line graph coming soon...</span>
+        <div className="w-full h-80 bg-gray-800 rounded-xl p-4">
+          {priceHistory.length > 0 ? (
+            <LineChartComponent data={priceHistory} />
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-500">
+              Loading chart data...
+            </div>
+          )}
         </div>
       </div>
     </div>
