@@ -10,27 +10,28 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/api/price', methods=['GET'])
-def price():
+@app.route('/api/price/<symbol>/<minutes>', methods=['GET'])
+def price(symbol, minutes):
     # Get current time
     now = datetime.now(timezone.utc)
     print(now)
 
-    # Subtract 60 minutes
-    sixty_minutes_ago = now - timedelta(minutes=60)
+    # Subtract n minutes
+    n_minutes_ago = now - timedelta(minutes=int(minutes))
 
     # Convert to ISO format
     # Format time correctly for Alpaca: RFC3339 with no microseconds
-    start_time = sixty_minutes_ago.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+    start_time = n_minutes_ago.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 
     # URL encode the time string
     encoded_start = quote(start_time)
 
     # Construct API URL
     api_url = (
-        f"https://data.alpaca.markets/v1beta3/crypto/us/bars"
-        f"?symbols=BTC%2FUSD&timeframe=1Min&sort=asc&start={encoded_start}"
+        f"https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols={symbol}%2FUSD&timeframe=1Min&sort=asc&start={encoded_start}"
     )
+
+    print(api_url)
 
     headers = {"accept": "application/json"}
 
