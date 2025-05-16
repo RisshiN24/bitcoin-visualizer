@@ -20,9 +20,8 @@ type Props = {
 };
 
 const LineChartComponent: React.FC<Props> = ({ data }) => {
-  // Optionally format time for better display
   const formattedData = data.map((point) => ({
-    time: new Date(point.time).toLocaleTimeString("en-US", {
+    time: new Date(point.time).toLocaleTimeString("en-US", { // Date object converts from UTC to local time of client
       hour: "2-digit",
       minute: "2-digit",
     }),
@@ -42,7 +41,7 @@ const LineChartComponent: React.FC<Props> = ({ data }) => {
         <Tooltip
           contentStyle={{ backgroundColor: "#222", borderColor: "#555" }}
           labelStyle={{ color: "#fff" }}
-          formatter={(value: number) => `$${value.toLocaleString()}`}
+          formatter={(value: number) => `$${value.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`}
         />
         <Line
           type="monotone"

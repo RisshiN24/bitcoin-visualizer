@@ -53,7 +53,7 @@ function IndexPage() {
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg max-w-md">
         <h2 className="text-xl text-gray-400 mb-2">Live Price (USD)</h2>
         <p className="text-4xl font-semibold text-green-400">
-          {price ? `$${price.toLocaleString()}` : "Loading..."}
+          {price ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}` : "Loading..."}
         </p>
       </div>
 
