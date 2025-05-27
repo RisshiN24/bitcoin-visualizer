@@ -6,50 +6,43 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 import os
 
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# API endpoint to fetch price data
+# === Price API ===
 @app.route('/api/price/<symbol>/<minutes>', methods=['GET'])
 def price(symbol, minutes):
-    # Get current time
-    now = datetime.now(timezone.utc)
-    print(now)
+    try:
+        now = datetime.now(timezone.utc)
+        n_minutes_ago = now - timedelta(minutes=int(minutes))
+        start_time = n_minutes_ago.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+        encoded_start = quote(start_time)
 
-    # Subtract n minutes
-    n_minutes_ago = now - timedelta(minutes=int(minutes))
+        api_url = (
+            f"https://data.alpaca.markets/v1beta3/crypto/us/bars"
+            f"?symbols={symbol}%2FUSD&timeframe=1Min&sort=asc&start={encoded_start}"
+        )
 
-    # Convert to ISO format
-    # Format time correctly for Alpaca: RFC3339 with no microseconds
-    start_time = n_minutes_ago.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+        headers = {"accept": "application/json"}
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
 
-    # URL encode the time string
-    encoded_start = quote(start_time)
+        return jsonify(response.json())
 
-    # Construct API URL
-    api_url = (
-        f"https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols={symbol}%2FUSD&timeframe=1Min&sort=asc&start={encoded_start}"
-    )
-
-    print(api_url)
-
-    headers = {"accept": "application/json"}
-
-    response = requests.get(api_url, headers=headers)
-
-    print(response.text)
-
-    return jsonify(response.text)
+    except Exception as e:
+        print("Error fetching price data:", e)
+        return jsonify({"error": "Failed to fetch price data"}), 500
 
 
+# === News API ===
 @app.route('/api/news/<symbol>', methods=['GET'])
 def news(symbol):
-    # API_KEY = os.getenv('GNEWS_API_KEY')  # Your GNews key in .env
-    # print(API_KEY)
-    # if not API_KEY:
-    #     return jsonify({"error": "Missing API key"}), 500
+    API_KEY = os.getenv('GNEWS_API_KEY')
+    if not API_KEY:
+        return jsonify({"error": "Missing API key"}), 500
 
     symbol_map = {
         "BTC": "bitcoin",
@@ -57,16 +50,17 @@ def news(symbol):
     }
     query = symbol_map.get(symbol.upper(), symbol.lower())
 
-    url = f"https://gnews.io/api/v4/search?q={query}&lang=en&country=us&max=10&apikey=77510a4527e9163e3e9e5b72a26cdb9b"
-    print(url)
+    url = f"https://gnews.io/api/v4/search?q={query}&lang=en&country=us&max=10&apikey={API_KEY}"
+
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        return jsonify(data["articles"])  # just return articles array
+        return jsonify(data["articles"])
     except requests.exceptions.RequestException as e:
         print("Error fetching news:", e)
         return jsonify({"error": "Failed to fetch news"}), 500
+
 
 if __name__ == '__main__':
     app.run(port=5000)

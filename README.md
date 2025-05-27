@@ -1,19 +1,16 @@
-# 💲Bitcoin Live Price Dashboard
+# 📊 Crypto Dashboard
 
-A full-stack web application that displays the **live price** of Bitcoin along with a **line chart of the past 60 minutes** of price data. Built with **Next.js**, **Tailwind CSS**, **Flask**, and **Recharts** using real-time data from the **Alpaca Markets API**.
-
----
-
-## Preview
-
-![screenshot](public/screenshot.png)
+A full-stack web app that displays the **live price**, **interactive chart**, and **latest news headlines** for popular cryptocurrencies like **Bitcoin (BTC)** and **Ethereum (ETH)**. Built with **Next.js**, **Tailwind CSS**, **Flask**, and **Recharts**, and powered by **Alpaca** and **GNews** APIs.
 
 ---
 
 ## 🔧 Features
 
-- Live Bitcoin price updated every minute
-- Real-time chart showing 1-minute intervals for the past 60 minutes
+- 💰 **Live crypto prices** updated every 10 seconds
+- 📈 Interactive line chart for historical price over a selectable time window (5–120 minutes)
+- 📰 Scrollable right-hand **news column** with headlines from GNews
+- 🔄 Symbol selector (BTC / ETH) dynamically updates chart, price, and news feed
 - Responsive, clean UI with Tailwind CSS
-- Flask backend proxying data from Alpaca API for historical data
-- Frontend built with Next.js + Recharts for chart rendering
+- Flask backend handles data transformation and API integration
+
+![Dashboard Screenshot](public/screenshot.png)
