@@ -9,11 +9,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-
-type PricePoint = {
-  time: string;
-  price: number;
-};
+import { PricePoint } from "../types/types";
 
 type Props = {
   data: PricePoint[];
