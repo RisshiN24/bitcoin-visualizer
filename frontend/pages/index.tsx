@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { CogIcon } from "@heroicons/react/24/outline";
+import SettingsDialog from "@/components/SettingsDialog"
+import MetricWidget from "@/components/MetricWidget"
 import LineChartComponent from "../components/LineChartComponent";
 import NewsColumnComponent from "../components/NewsColumnComponent";
 import { fetchPriceData, fetchNews } from "../lib/api";
@@ -53,15 +54,9 @@ function IndexPage() {
   // Feature visibility controls
   const [showChart, setShowChart] = useState<boolean>(true);
   const [showNews, setShowNews] = useState<boolean>(true);
-  
-  // Settings panel visibility
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
   // High/Low toggle state
   const [showHigh, setShowHigh] = useState<boolean>(true);
-
-  // Ref for settings panel to detect outside clicks
-  const settingsRef = useRef<HTMLDivElement>(null);
 
   const handleSymbolChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSymbol(event.target.value);
@@ -148,23 +143,6 @@ function IndexPage() {
 
   const { percentChange, high, low, rsi, volatility } = getMetrics();
 
-  // Handle clicking outside settings to close it
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
-        setIsSettingsOpen(false);
-      }
-    };
-
-    if (isSettingsOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isSettingsOpen]);
-
   useEffect(() => {
     fetchPriceData(symbol, minutes, setPriceHistory, setPrice); // initial fetch
     fetchNews(symbol, setNews); // initial news fetch
@@ -196,61 +174,63 @@ function IndexPage() {
           
           {/* Metric Widgets - Fill remaining space */}
           <div className="flex-1 flex gap-3 ml-8 mr-4">
-            {/* Percent Change Widget */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex-1">
-              <div className="text-xs text-gray-400 mb-1">% Change</div>
-              <div className={`text-sm font-semibold ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {percentChange >= 0 ? '+' : ''}{percentChange.toFixed(2)}%
-              </div>
-              <div className="text-xs text-gray-500">Last {minutes}min</div>
-            </div>
+            <MetricWidget
+              title="% Change"
+              value={`${percentChange >= 0 ? "+" : ""}${percentChange.toFixed(2)}%`}
+              subtitle={`Last ${minutes}min`}
+              color={percentChange >= 0 ? "text-green-400" : "text-red-400"}
+            />
 
-            {/* High/Low Toggle Widget */}
-            <div 
-              className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex-1 cursor-pointer hover:bg-gray-750 transition-colors"
+            <MetricWidget
+              title={showHigh ? "High" : "Low"}
+              value={`$${(showHigh ? high : low).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
+              subtitle={`Last ${minutes}min`}
+              color={showHigh ? "text-green-400" : "text-red-400"}
               onClick={() => setShowHigh(!showHigh)}
-            >
-              <div className="text-xs text-gray-400 mb-1">{showHigh ? 'High' : 'Low'}</div>
-              <div className={`text-sm font-semibold ${showHigh ? 'text-green-400' : 'text-red-400'}`}>
-                ${(showHigh ? high : low).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-gray-500">Last {minutes}min</div>
-            </div>
+            />
 
-            {/* RSI Widget */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex-1">
-              <div className="text-xs text-gray-400 mb-1">RSI (14)</div>
-              <div className={`text-sm font-semibold ${
-                rsi > 70 ? 'text-red-400' : 
-                rsi < 30 ? 'text-green-400' : 
-                'text-yellow-400'
-              }`}>
-                {rsi.toFixed(1)}
-              </div>
-              <div className="text-xs text-gray-500">Last {minutes}min</div>
-            </div>
+            <MetricWidget
+              title="RSI (14)"
+              value={rsi.toFixed(1)}
+              subtitle={`Last ${minutes}min`}
+              color={
+                rsi > 70
+                  ? "text-red-400"
+                  : rsi < 30
+                  ? "text-green-400"
+                  : "text-yellow-400"
+              }
+            />
 
-            {/* Volatility Widget */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex-1">
-              <div className="text-xs text-gray-400 mb-1">Volatility</div>
-              <div className={`text-sm font-semibold ${
-                volatility > 3 ? 'text-red-400' : 
-                volatility > 1 ? 'text-yellow-400' : 
-                'text-green-400'
-              }`}>
-                {volatility.toFixed(2)}%
-              </div>
-              <div className="text-xs text-gray-500">Last {minutes}min</div>
-            </div>
+            <MetricWidget
+              title="Volatility"
+              value={`${volatility.toFixed(2)}%`}
+              subtitle={`Last ${minutes}min`}
+              color={
+                volatility > 3
+                  ? "text-red-400"
+                  : volatility > 1
+                  ? "text-yellow-400"
+                  : "text-green-400"
+              }
+            />
           </div>
 
           {/* Gear icon for settings */}
-          <button
-            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            className="p-2 text-gray-400 hover:text-white transition-colors flex-shrink-0"
-          >
-            <CogIcon className="w-8 h-8" />
-          </button>
+          <SettingsDialog
+            symbol={symbol}
+            minutes={minutes}
+            showChart={showChart}
+            showNews={showNews}
+            setSymbol={setSymbol}
+            setMinutes={setMinutes}
+            setShowChart={setShowChart}
+            setShowNews={setShowNews}
+          />
+
         </div>
         
         {/* Price as subtitle - inline */}
@@ -260,81 +240,6 @@ function IndexPage() {
             {price ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} USD` : "Loading price..."}
           </p>
         </div>
-
-        {/* Collapsible Settings Panel */}
-        {isSettingsOpen && (
-          <div 
-            ref={settingsRef}
-            className="absolute top-12 right-0 w-[380px] bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg z-10"
-          >
-            <div className="grid grid-cols-2 gap-4">
-              {/* Column 1: Symbol & Minutes */}
-              <div className="space-y-3">
-                <div>
-                  <label htmlFor="symbol" className="block text-gray-400 text-xs mb-1">
-                    Symbol
-                  </label>
-                  <select
-                    id="symbol"
-                    className="w-full bg-gray-800 text-white rounded-md p-2 text-sm"
-                    value={symbol.toString()}
-                    onChange={handleSymbolChange}
-                  >
-                    <option value="BTC">BTC</option>
-                    <option value="ETH">ETH</option>
-                    <option value="DOGE">DOGE</option>
-                    <option value="SHIB">SHIB</option>
-                    <option value="SOL">SOL</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="minutes" className="block text-gray-400 text-xs mb-1">
-                    Minutes
-                  </label>
-                  <select
-                    id="minutes"
-                    className="w-full bg-gray-800 text-white rounded-md p-2 text-sm"
-                    value={minutes}
-                    onChange={handleMinutesChange}
-                  >
-                    <option value={5}>5</option>
-                    <option value={15}>15</option>
-                    <option value={30}>30</option>
-                    <option value={60}>60</option>
-                    <option value={120}>120</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Column 2: Feature Checkboxes */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-gray-400 text-xs mb-2">Features</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={showChart}
-                        onChange={(e) => setShowChart(e.target.checked)}
-                        className="appearance-none w-4 h-4 rounded bg-gray-700 border-2 border-gray-600 checked:bg-blue-500 checked:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 relative checked:after:content-['✓'] checked:after:text-white checked:after:text-xs checked:after:absolute checked:after:top-0 checked:after:left-0 checked:after:w-full checked:after:h-full checked:after:flex checked:after:items-center checked:after:justify-center"
-                      />
-                      Show Chart
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={showNews}
-                        onChange={(e) => setShowNews(e.target.checked)}
-                        className="appearance-none w-4 h-4 rounded bg-gray-700 border-2 border-gray-600 checked:bg-blue-500 checked:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 relative checked:after:content-['✓'] checked:after:text-white checked:after:text-xs checked:after:absolute checked:after:top-0 checked:after:left-0 checked:after:w-full checked:after:h-full checked:after:flex checked:after:items-center checked:after:justify-center"
-                      />
-                      Show News
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Main Content Area - Fills remaining space */}
