@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { CogIcon } from "@heroicons/react/24/outline";
 import LineChartComponent from "../components/LineChartComponent";
@@ -57,12 +57,113 @@ function IndexPage() {
   // Settings panel visibility
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
+  // High/Low toggle state
+  const [showHigh, setShowHigh] = useState<boolean>(true);
+
+  // Ref for settings panel to detect outside clicks
+  const settingsRef = useRef<HTMLDivElement>(null);
+
   const handleSymbolChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSymbol(event.target.value);
   };
   const handleMinutesChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setMinutes(+event.target.value);
   };
+
+  // Calculate RSI (14-period)
+  const calculateRSI = (prices: number[], period: number = 14) => {
+    if (prices.length < period + 1) return 50; // Default to neutral if not enough data
+    
+    const gains: number[] = [];
+    const losses: number[] = [];
+    
+    // Calculate gains and losses
+    for (let i = 1; i < prices.length; i++) {
+      const change = prices[i] - prices[i - 1];
+      gains.push(change > 0 ? change : 0);
+      losses.push(change < 0 ? Math.abs(change) : 0);
+    }
+    
+    // Calculate average gains and losses over the period
+    let avgGain = 0;
+    let avgLoss = 0;
+    
+    // Initial averages (simple average for first period)
+    for (let i = 0; i < period; i++) {
+      avgGain += gains[i];
+      avgLoss += losses[i];
+    }
+    avgGain /= period;
+    avgLoss /= period;
+    
+    // Calculate RSI for the most recent period using smoothed averages
+    for (let i = period; i < gains.length; i++) {
+      avgGain = ((avgGain * (period - 1)) + gains[i]) / period;
+      avgLoss = ((avgLoss * (period - 1)) + losses[i]) / period;
+    }
+    
+    if (avgLoss === 0) return 100; // Avoid division by zero
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+  };
+
+  // Calculate Volatility (Standard Deviation of Returns)
+  const calculateVolatility = (prices: number[]) => {
+    if (prices.length < 2) return 0; // Need at least 2 prices for returns
+    
+    // Calculate returns (percentage changes)
+    const returns: number[] = [];
+    for (let i = 1; i < prices.length; i++) {
+      const returnPct = ((prices[i] - prices[i - 1]) / prices[i - 1]) * 100;
+      returns.push(returnPct);
+    }
+    
+    if (returns.length === 0) return 0;
+    
+    // Calculate mean return
+    const meanReturn = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
+    
+    // Calculate variance
+    const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - meanReturn, 2), 0) / returns.length;
+    
+    // Return standard deviation (volatility)
+    return Math.sqrt(variance);
+  };
+
+  // Calculate metrics from price history
+  const getMetrics = () => {
+    if (priceHistory.length === 0) return { percentChange: 0, high: 0, low: 0, rsi: 50, volatility: 0 };
+    
+    const prices = priceHistory.map(point => point.price);
+    const firstPrice = prices[0];
+    const lastPrice = prices[prices.length - 1];
+    const high = Math.max(...prices);
+    const low = Math.min(...prices);
+    const percentChange = ((lastPrice - firstPrice) / firstPrice) * 100;
+    const rsi = calculateRSI(prices);
+    const volatility = calculateVolatility(prices);
+    
+    return { percentChange, high, low, rsi, volatility };
+  };
+
+  const { percentChange, high, low, rsi, volatility } = getMetrics();
+
+  // Handle clicking outside settings to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    if (isSettingsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSettingsOpen]);
 
   useEffect(() => {
     fetchPriceData(symbol, minutes, setPriceHistory, setPrice); // initial fetch
@@ -79,42 +180,93 @@ function IndexPage() {
   return (
     <div className="h-screen bg-gray-950 text-white font-sans px-6 py-6 flex flex-col relative">
       {/* Header with title & subtitle */}
-      <div className="mb-6 flex-shrink-0 relative">
-        {/* Gear icon for settings */}
-        <button
-          onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-          className="absolute top-0 right-0 p-2 text-gray-400 hover:text-white transition-colors"
-        >
-          <CogIcon className="w-8 h-8" />
-        </button>
-
-        {/* Logo + Title + Price */}
-        <div>
-          <div className="flex items-center gap-4 mb-2">
-            <CoinLogo symbol={symbol} />
-            <h1 className={`text-6xl font-bold tracking-tight whitespace-nowrap ${
-              symbol === 'BTC' ? 'text-orange-400' : 
-              symbol === 'ETH' ? 'text-purple-400' :
-              symbol === 'DOGE' ? 'text-yellow-400' :
-              symbol === 'SHIB' ? 'text-red-400' :
-              symbol === 'SOL' ? 'text-green-400' : 'text-blue-400'
-            }`}>
-              {symbol} Dashboard
-            </h1>
-          </div>
+      <div className="mb-6 flex-shrink-0">
+        {/* Top row: Logo + Title + Widgets + Gear */}
+        <div className="flex items-center gap-4 mb-2 pr-12">
+          <CoinLogo symbol={symbol} />
+          <h1 className={`text-6xl font-bold tracking-tight whitespace-nowrap ${
+            symbol === 'BTC' ? 'text-orange-400' : 
+            symbol === 'ETH' ? 'text-purple-400' :
+            symbol === 'DOGE' ? 'text-yellow-400' :
+            symbol === 'SHIB' ? 'text-red-400' :
+            symbol === 'SOL' ? 'text-green-400' : 'text-blue-400'
+          }`}>
+            {symbol} Dashboard
+          </h1>
           
-          {/* Price as subtitle - inline */}
-          <div className="ml-16 flex items-baseline gap-3">
-            <p className="text-sm text-gray-400 italic">Live Price:</p>
-            <p className="text-xl font-semibold text-green-400">
-              {price ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} USD` : "Loading price..."}
-            </p>
+          {/* Metric Widgets - Fill remaining space */}
+          <div className="flex-1 flex gap-3 ml-8 mr-4">
+            {/* Percent Change Widget */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex-1">
+              <div className="text-xs text-gray-400 mb-1">% Change</div>
+              <div className={`text-sm font-semibold ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {percentChange >= 0 ? '+' : ''}{percentChange.toFixed(2)}%
+              </div>
+              <div className="text-xs text-gray-500">Last {minutes}min</div>
+            </div>
+
+            {/* High/Low Toggle Widget */}
+            <div 
+              className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex-1 cursor-pointer hover:bg-gray-750 transition-colors"
+              onClick={() => setShowHigh(!showHigh)}
+            >
+              <div className="text-xs text-gray-400 mb-1">{showHigh ? 'High' : 'Low'}</div>
+              <div className={`text-sm font-semibold ${showHigh ? 'text-green-400' : 'text-red-400'}`}>
+                ${(showHigh ? high : low).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-gray-500">Last {minutes}min</div>
+            </div>
+
+            {/* RSI Widget */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex-1">
+              <div className="text-xs text-gray-400 mb-1">RSI (14)</div>
+              <div className={`text-sm font-semibold ${
+                rsi > 70 ? 'text-red-400' : 
+                rsi < 30 ? 'text-green-400' : 
+                'text-yellow-400'
+              }`}>
+                {rsi.toFixed(1)}
+              </div>
+              <div className="text-xs text-gray-500">Last {minutes}min</div>
+            </div>
+
+            {/* Volatility Widget */}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-2 flex-1">
+              <div className="text-xs text-gray-400 mb-1">Volatility</div>
+              <div className={`text-sm font-semibold ${
+                volatility > 3 ? 'text-red-400' : 
+                volatility > 1 ? 'text-yellow-400' : 
+                'text-green-400'
+              }`}>
+                {volatility.toFixed(2)}%
+              </div>
+              <div className="text-xs text-gray-500">Last {minutes}min</div>
+            </div>
           </div>
+
+          {/* Gear icon for settings */}
+          <button
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className="p-2 text-gray-400 hover:text-white transition-colors flex-shrink-0"
+          >
+            <CogIcon className="w-8 h-8" />
+          </button>
+        </div>
+        
+        {/* Price as subtitle - inline */}
+        <div className="ml-16 flex items-baseline gap-3">
+          <p className="text-sm text-gray-400 italic">Live Price:</p>
+          <p className="text-xl font-semibold text-green-400">
+            {price ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} USD` : "Loading price..."}
+          </p>
         </div>
 
         {/* Collapsible Settings Panel */}
         {isSettingsOpen && (
-          <div className="absolute top-12 right-0 w-[380px] bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg z-10">
+          <div 
+            ref={settingsRef}
+            className="absolute top-12 right-0 w-[380px] bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg z-10"
+          >
             <div className="grid grid-cols-2 gap-4">
               {/* Column 1: Symbol & Minutes */}
               <div className="space-y-3">
@@ -164,7 +316,7 @@ function IndexPage() {
                         type="checkbox"
                         checked={showChart}
                         onChange={(e) => setShowChart(e.target.checked)}
-                        className="rounded bg-gray-800 border-gray-600"
+                        className="appearance-none w-4 h-4 rounded bg-gray-700 border-2 border-gray-600 checked:bg-blue-500 checked:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 relative checked:after:content-['✓'] checked:after:text-white checked:after:text-xs checked:after:absolute checked:after:top-0 checked:after:left-0 checked:after:w-full checked:after:h-full checked:after:flex checked:after:items-center checked:after:justify-center"
                       />
                       Show Chart
                     </label>
@@ -173,7 +325,7 @@ function IndexPage() {
                         type="checkbox"
                         checked={showNews}
                         onChange={(e) => setShowNews(e.target.checked)}
-                        className="rounded bg-gray-800 border-gray-600"
+                        className="appearance-none w-4 h-4 rounded bg-gray-700 border-2 border-gray-600 checked:bg-blue-500 checked:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 relative checked:after:content-['✓'] checked:after:text-white checked:after:text-xs checked:after:absolute checked:after:top-0 checked:after:left-0 checked:after:w-full checked:after:h-full checked:after:flex checked:after:items-center checked:after:justify-center"
                       />
                       Show News
                     </label>
@@ -213,7 +365,9 @@ function IndexPage() {
 
             {/* Right: News */}
             {showNews && (
-              <div className="w-full lg:w-[380px] h-full overflow-y-auto bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg flex flex-col">
+              <div className={`h-full overflow-y-auto bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg flex flex-col ${
+                showChart ? 'w-full lg:w-[380px]' : 'flex-1'
+              }`}>
                 <NewsColumnComponent news={news} />
               </div>
             )}
