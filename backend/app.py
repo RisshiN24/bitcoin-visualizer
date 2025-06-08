@@ -46,7 +46,10 @@ def news(symbol):
 
     symbol_map = {
         "BTC": "bitcoin",
-        "ETH": "ethereum"
+        "ETH": "ethereum",
+        "DOGE": "dogecoin",
+        "SHIB": "shiba inu",
+        "SOL": "solana"
     }
     query = symbol_map.get(symbol.upper(), symbol.lower())
 

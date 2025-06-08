@@ -3,8 +3,7 @@ export const fetchPriceData = (symbol: String, minutes: number, setPriceHistory:
   fetch(`http://localhost:5000/api/price/${symbol}/${minutes.toString()}`)
       .then((response) => response.json())
       .then((data) => {
-        const parsed = JSON.parse(data);
-        const bars = parsed?.bars?.[`${symbol}/USD`] || [];
+        const bars = data?.bars?.[`${symbol}/USD`] || [];
 
         if (bars.length > 0) {
           const formatted = bars.map((bar: any) => ({

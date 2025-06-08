@@ -25,7 +25,7 @@ const LineChartComponent: React.FC<Props> = ({ data }) => {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={320}>
+    <ResponsiveContainer width="100%" height="100%">
       <LineChart data={formattedData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="#333" strokeDasharray="3 3" />
         <XAxis dataKey="time" tick={{ fill: "#ccc", fontSize: 12 }} />
