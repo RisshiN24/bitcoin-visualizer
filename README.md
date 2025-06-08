@@ -6,10 +6,10 @@ A full-stack web app that displays the **live price**, **interactive chart**, an
 
 ## 🔧 Features
 
-- 💰 **Live crypto prices** updated every 10 seconds
+- 💰 **Live crypto prices** updated every minute
 - 📈 Interactive line chart for historical price over a selectable time window (5–120 minutes)
 - 📰 Scrollable right-hand **news column** with headlines from GNews
-- 🔄 Symbol selector (BTC / ETH) dynamically updates chart, price, and news feed
+- 🔄 Symbol selector in settings pane (BTC, ETH, SHIB, DOGE, SOL)
 - Responsive, clean UI with Tailwind CSS
 - Flask backend handles data transformation and API integration
 
